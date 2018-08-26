@@ -9,6 +9,7 @@ import java.io.InputStreamReader;
 import java.lang.InterruptedException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.util.Arrays;
 import java.util.Date;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -59,36 +60,39 @@ public class RequestProcessor extends Thread {
             if (req[0].equals("GET")) {
                 String addr = req[1];
                 logger.log(2, "Request to "+addr);
+                if (addr.equals("/"))
+                    addr = "/index.html";
 
-                String res = null;
+                byte[] res = null;
 
                 Path path = Paths.get(this.directory + addr);
                 if (Files.exists(path, LinkOption.NOFOLLOW_LINKS) && !Files.isDirectory(path)) {
                     try {
                         byte[] content = Files.readAllBytes(path);
-                        res = "HTTP/1.1 200 OK\r\n" +
+                        byte[] header = ("HTTP/1.1 200 OK\r\n" +
                               "Connection: close\r\n" +
                               "Date: " + new Date().toString() + "\r\n" +
-                              "Server: Apache/1.3.0 (Unix)\r\n" +
+                              "Server: Migue do Vral/1.0.0 (Unix)\r\n" +
                               "Last-Modified: " + Files.getLastModifiedTime(path, LinkOption.NOFOLLOW_LINKS).toString() + "\r\n" +
                               "Content-Length: " + content.length + "\r\n" +
-                              "Content-Type: text/html " + "\r\n" +
-                              "Encoding: UTF-8\r\n\r\n" +
-                              new String(content);
+                              "Content-Type: " + Files.probeContentType(path) + "\r\n" +
+                              "Encoding: UTF-8\r\n\r\n").getBytes();
+                        res = Arrays.copyOf(header, header.length + content.length);
+                        System.arraycopy(content, 0, res, header.length, content.length);
                     }
                     catch (IOException e) {
                         logger.warn(1, "IOException while reading " + path.toString());
-                        res = "HTTP/1.1 500 Internal Server Error\r\n";
+                        res = "HTTP/1.1 500 Internal Server Error\r\n".getBytes();
                     }
                 }
                 else {
-                    res = "HTTP/1.1 404 Not Found\r\n" +
-                          "Encoding: UTF-8\r\n";
+                    res = ("HTTP/1.1 404 Not Found\r\n" +
+                          "Encoding: UTF-8\r\n").getBytes();
                     logger.log(2, "File "+path.toString()+" does not exist");
                 }
 
                 try {
-                    socket.getOutputStream().write(res.getBytes(StandardCharsets.UTF_8));
+                    socket.getOutputStream().write(res);
                     socket.close();
                 }
                 catch (IOException e) {

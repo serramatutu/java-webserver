@@ -1,6 +1,6 @@
 public class WebServerConfig {
     private int port = DEFAULT_PORT;
-    private String directory = "C:\\Users\\u16187\\Desktop\\java-webserver\\bin";
+    private String directory = "./bin";
 
     public Logger logger = new Logger();
 
